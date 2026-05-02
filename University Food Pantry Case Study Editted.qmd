@@ -1,0 +1,129 @@
+---
+title: "University Food Pantries"
+format: 
+  html:
+    embed-resources: true
+    code-fold: true
+    theme: cosmo
+execute:
+  warning: false
+  message: false
+---
+
+## University Food Pantries Case Study
+
+Dom Cortez
+
+04/25/26
+
+Here, I am getting all of the packages I need for this script.
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(janitor)
+library(here)
+library(skimr)
+library(Tmisc)
+library('datasauRus')
+library(SimDesign)
+library(scales)
+
+```
+
+Assigning the data set to a variable so R can read the file and I can make my analyses. After this I am going to start to clean and organize the data.
+
+```{r}
+pantry <- read_csv("E:/Documents/University_Food_Pantry_Study_Synthetic_Dataset.csv")
+
+# I want to prefice that I did make a synthetic dataset, and I also included the dataset in the GitHub. I designed it with 10 variables, including the date, universities and the region of the universities. I also created several student defining variables such as their meal plan, housing status, and what type of financial aid they were given. 
+
+# Here I am getting rid of any NA values.
+pantry <- pantry %>% drop_na()
+
+# Next I assign all of the data values to their respective year, month, and day of the week. 
+pantry$year <- format(as.Date(pantry$Visit_Date), "%Y")
+
+pantry$month <- format(as.Date(pantry$Visit_Date), "%b")
+
+pantry$day <- format(as.Date(pantry$Visit_Date), "%A")
+
+pantry$month <- ordered(pantry$month, levels = c("Jan", "Feb", "Mar", "Apr",
+    "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
+
+# Here I am making a new dataframe so that I can put the dates together to get one seemless data set so I can visualize the change in weights as time goes on. Since we can see a gradual positive correlation, we can see that the pantry is getting used more. 
+
+
+pantry_timeline <- pantry %>%  filter(!(year == "2025")) %>% 
+  group_by(year, month) %>% 
+  summarise(avgFood = mean(Food_Weight_lbs, na.rm = TRUE), .groups = 'drop') %>%
+  mutate(date_cont = as.Date(paste(month, year, "01"), format = "%B %Y %d")) %>%
+  arrange(date_cont) %>% ungroup()
+
+
+
+ggplot(pantry_timeline, aes(x = date_cont, y = avgFood, group = 1)) + 
+  geom_line(color = "steelblue") + 
+  geom_point() +  
+  labs(title = "Monthly Mean Pounds of Food by Month and Year", 
+       x = "Date", 
+       y = "Average Pounds")
+
+# Now I am going to try to see if I can see a correlation between student level, meal plans, and housing.
+
+ggplot(pantry, aes(x = "", fill = Student_Level)) + 
+  geom_bar(width = 1) + coord_polar("y", start = 0) +
+  theme_void() + 
+  scale_fill_viridis_d(option = "mako", begin = 0.3, end = 0.7) +
+  labs(title = "Graph of Pantry Usage by Student Level",
+       subtitle = "Entries from January 2020 to December 2024",
+       fill = "Student Type")
+
+
+ggplot(pantry, aes(x = "", fill = Meal_Plan)) + 
+  geom_bar(width = 1) + coord_polar("y", start = 0) +
+  theme_void() +
+  scale_fill_viridis_d(option = "mako", begin = 0.3, end = 0.7) +
+  labs(title = "Graph of Pantry Usage by Meal Plan",
+       subtitle = "Entries from January 2020 to December 2024",
+       fill = "Type of Meal Plan")
+
+ggplot(pantry, aes(x = "", fill = Housing)) + 
+  geom_bar(width = 1) + coord_polar("y", start = 0) +
+  theme_void() +
+  scale_fill_viridis_d(option = "mako", begin = 0.3, end = 0.7) +
+  labs(title = "Graph of Pantry Usage by Housing",
+  subtitle = "Entries from January 2020 to December 2024",
+       fill = "Type of Housing")
+
+```
+
+From these graphs we can tell that the majority of types of students that use the food pantry would be undergraduates, students with no meal plan, and also students with off-campus housing. This is really good data so we can try to get to target the advertising in the future.
+
+```{r}
+
+# Since I created a different data frame to create the average food weight, I need to join the two togehter to make analyses with other variables. 
+
+pantry_with_avg <- pantry %>% left_join(pantry_timeline %>% 
+        select(year, month, avgFood), by = c("year", "month"))
+
+pantry_with_avg %>% filter(year != "2025") %>% 
+  ggplot(aes(x = year, y = University, fill = avgFood)) +
+  geom_tile() +
+  scale_fill_viridis_c(option = "mako") +
+  theme_minimal() +
+  labs(title = "Food Pantry Usage Intensity by University",
+       x = "Year",
+       y = "University",
+       fill = "Avg Pounds")
+
+# For my last data visualization, I decided to create a heat map so I could see the average weight of food that was used from each pantry across all of the universities. I also scaled them by year so I could see if the weight increased. What this tells us is that as the years went by, all of the universities had their pantries used more. We can deduce this by saying the weight of the food that was taken from the pantries had increased from the starting year of 2020 to the last year of 2024.
+
+```
+
+Going into this, I wanted to see if there was an increase in food pantry usage over the last several years. With the data cleaning procedures and the analyses that I have made through R, I can confidently say that I have completed the business task. From this, we can see that the weight of food has increased overall with a line graph, but we can also see that by university, the weight has increased over the 4 years of the study. What this means is that on average, the food pantry has used more resources over the years. This is a great discovery so that we can convince stakeholders that students need more help than what was originally thought.
+
+Because of my findings, I am able to give some great recommendations for the future. My first recommendation would be to increase the range of the data. With this study, I was only able to get data from 10 universities. One helpful change would be to get data from a large number of universities, and even smaller universities so we could see the difference in usage. Another recommendation that I would make would be to incorporate advertising for the importance of the food pantry in student orientation. This would help reach a higher percentage of undergraduate students since the student level chart clearly defined most of the students who used the food pantry were undergraduate students. My last recommendation would be to possibly target certain universities depending on how much their mean pounds of food has increased over the years. Some examples would be to target UW Seattle, Texas A&M, and Arizona State because of their final weight of food. These examples were picked due to these universities being the lowest mean food pantry usage out of the pool of universities.
+
+I used Google Gemini when creating the data visualizations. Some of the key items that it helped me with was the heat map portion and also the mako color palette. Another key item that it helped me with was creating the date_cont variable. I had some trouble splicing the dates together to get one continuous date variable, so this was very helpful.
